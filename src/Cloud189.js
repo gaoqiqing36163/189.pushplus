@@ -1,4 +1,4 @@
-require("dotenv")。config();
+require("dotenv").config();
 const recording = require("log4js/lib/appenders/recording");
 const { CloudClient, FileTokenStore } = require("../sdk/index");
 let { push } = require("./push");
