@@ -34,6 +34,7 @@ const doTask = async (cloudClient, PRIVATE_THREADX, FAMILY_THREADX) => {
       })()
     );
   }
+  //超时中断
   await Promise.race([Promise.all(signPromises1), sleep(timeout)]);
   if (getSpace.length == 1) getSpace.push(" 0");
   result.push(getSpace.join(""));
@@ -58,6 +59,7 @@ const doTask = async (cloudClient, PRIVATE_THREADX, FAMILY_THREADX) => {
         })()
       );
     }
+    //超时中断
     await Promise.race([Promise.all(signPromises1), sleep(timeout)]);
     if (getSpace.length == 1) getSpace.push(" 0");
     result.push(getSpace.join(""));
@@ -90,6 +92,7 @@ function ensureDirectoryExists(dirPath) {
   }
 }
 
+// 使用示例
 const folderPath = path.join(__dirname, "../.token");
 ensureDirectoryExists(folderPath);
 
@@ -138,13 +141,14 @@ const main = async () => {
       userNameInfo = mask(userName, 3, 7);
       let token = new FileTokenStore(`.token/${userName}.json`);
       try {
+        await sleep(2000)
         cloudClient = new CloudClient({
           username: userName,
           password,
           token: token,
         });
       } catch (e) {
-        console.error("操作失败:", e.message);
+        console.error("操作失败:", e.message);// 只记录错误消息
       }
 
       cloudClientMap.set(userName, cloudClient);
@@ -170,6 +174,7 @@ const main = async () => {
           familyCapacitySize2 = familyCapacitySize;
         }
 
+        //重新获取主账号的空间信息
         cloudClient = cloudClientMap.get(firstUserName);
         const { familyCapacityInfo } = await cloudClient.getUserSizeInfo();
 
@@ -232,7 +237,14 @@ const main = async () => {
   } finally {
     logger.log("\n\n");
     const events = recording.replay();
-    const content = events.map((e) => `${e.data.join("")}`).join("  \n");
+    let content = events.map((e) => `${e.data.join("")}`).join("  \n");
+    
+    // 提取最后一个主账号汇总块
+    const summaryBlock = content.match(/主账号.*家庭容量\+ \d+M[\s\S]*?个人总容量：\d+\.\d{2}G, 家庭总容量：\d+\.\d{2}G/);   
+    if (summaryBlock) {
+     content = `${summaryBlock[0]}  \n\n${content}`; // 插入到最前面
+   }
+
     push("天翼云A组报告", content);
   }
 })();
