@@ -110,16 +110,16 @@ const main = async () => {
       : 6; //前3个账号配置
     const PRIVATE_Y = process.env.PRIVATE_Y 
       ? parseInt(process.env.PRIVATE_Y) 
-      : 10;   //前6个账号个人云签10次
+      : 12;   //前6个账号个人云签10次
     const FAMILY_Y = process.env.FAMILY_Y 
       ? parseInt(process.env.FAMILY_Y) 
-      : 10;   //前6个账号家庭云签10次
+      : 12;   //前6个账号家庭云签10次
     const PRIVATE_Z = process.env.PRIVATE_Z 
       ? parseInt(process.env.PRIVATE_Z) 
       : 0;  //其他账号个人云签0次
     const FAMILY_Z = process.env.FAMILY_Z 
       ? parseInt(process.env.FAMILY_Z) 
-      : 10;   //其他账号家庭云签10次
+      : 12;   //其他账号家庭云签10次
 
     for (i = 1; i < accounts.length; i += 2) {
       const [userName, password] = accounts.slice(i, i + 2);
@@ -233,6 +233,6 @@ const main = async () => {
     logger.log("\n\n");
     const events = recording.replay();
     const content = events.map((e) => `${e.data.join("")}`).join("  \n");
-    push("天翼云9025报告", content);
+    push("天翼云A组报告", content);
   }
 })();
