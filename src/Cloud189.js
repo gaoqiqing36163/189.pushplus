@@ -221,6 +221,6 @@ const main = async () => {
      content = `${summaryBlock[0]}  \n\n${content}`; // 插入到最前面
    }
 
-    push("天翼云A组报告", content);
+    push("天翼云盘测试报告", content);
   }
 })();
