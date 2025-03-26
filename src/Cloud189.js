@@ -16,30 +16,30 @@ const mask = (s, start, end) => {
 
 let timeout = 10000;
 
-const doTask = async (cloudClient, PRIVATE_THREADX, FAMILY_THREADX) => {
+const doTask = async (cloudClient) => {
   let result = [];
   let signPromises1 = [];
   let getSpace = [`${firstSpace}签到个人云获得(M)`];
 
-  // 个人云签到逻辑
-  for (let m = 0; m < PRIVATE_THREADX; m++) {
-    signPromises1.push(
-      (async () => {
-        try {
-          const res1 = await cloudClient.userSign();
-          if (!res1.isSign) {
-            getSpace.push(` ${res1.netdiskBonus}`);
-          }
-        } catch (e) {}
-      })()
-    );
+  if (process.env.PRIVATE_ONLY_FIRST != "true" || i == 1) {
+    for (let m = 0; m < process.env.PRIVATE_THREADX; m++) {
+      signPromises1.push(
+        (async () => {
+          try {
+            const res1 = await cloudClient.userSign();
+            if (!res1.isSign) {
+              getSpace.push(` ${res1.netdiskBonus}`);
+            }
+          } catch (e) {}
+        })()
+      );
+    }
+    //超时中断
+    await Promise.race([Promise.all(signPromises1), sleep(timeout)]);
+    if (getSpace.length == 1) getSpace.push(" 0");
+    result.push(getSpace.join(""));
   }
-  //超时中断
-  await Promise.race([Promise.all(signPromises1), sleep(timeout)]);
-  if (getSpace.length == 1) getSpace.push(" 0");
-  result.push(getSpace.join(""));
 
-  // 家庭云签到逻辑
   signPromises1 = [];
   getSpace = [`${firstSpace}获得(M)`];
   const { familyInfoResp } = await cloudClient.getFamilyList();
@@ -47,7 +47,7 @@ const doTask = async (cloudClient, PRIVATE_THREADX, FAMILY_THREADX) => {
     const family = familyInfoResp.find((f) => f.familyId == FAMILY_ID);
     if (!family) return result;
     result.push(`${firstSpace}开始签到家庭云 ID: ${family.familyId}`);
-    for (let i = 0; i < FAMILY_THREADX; i++) {
+    for (let i = 0; i < process.env.FAMILY_THREADX; i++) {
       signPromises1.push(
         (async () => {
           try {
@@ -61,6 +61,7 @@ const doTask = async (cloudClient, PRIVATE_THREADX, FAMILY_THREADX) => {
     }
     //超时中断
     await Promise.race([Promise.all(signPromises1), sleep(timeout)]);
+
     if (getSpace.length == 1) getSpace.push(" 0");
     result.push(getSpace.join(""));
   }
@@ -105,38 +106,8 @@ const main = async () => {
     let familyCapacitySize, familyCapacitySize2, firstUserName;
     FAMILY_ID = accounts[0];
 
-    // 读取环境变量配置 
-    //当currentIndex < THRESHOLD_COUNT时使用Y配置 
-    //当currentIndex >= THRESHOLD_COUNT时使用Z配置
-    const THRESHOLD_COUNT = process.env.THRESHOLD_COUNT 
-      ? parseInt(process.env.THRESHOLD_COUNT) 
-      : 6; //前3个账号配置
-    const PRIVATE_Y = process.env.PRIVATE_Y 
-      ? parseInt(process.env.PRIVATE_Y) 
-      : 12;   //前6个账号个人云签10次
-    const FAMILY_Y = process.env.FAMILY_Y 
-      ? parseInt(process.env.FAMILY_Y) 
-      : 12;   //前6个账号家庭云签10次
-    const PRIVATE_Z = process.env.PRIVATE_Z 
-      ? parseInt(process.env.PRIVATE_Z) 
-      : 0;  //其他账号个人云签0次
-    const FAMILY_Z = process.env.FAMILY_Z 
-      ? parseInt(process.env.FAMILY_Z) 
-      : 12;   //其他账号家庭云签10次
-
     for (i = 1; i < accounts.length; i += 2) {
       const [userName, password] = accounts.slice(i, i + 2);
-      const currentIndex = (i - 1) / 2;
-
-      // 动态设置签到次数
-      let PRIVATE_THREADX, FAMILY_THREADX;
-      if (currentIndex < THRESHOLD_COUNT) {
-        PRIVATE_THREADX = PRIVATE_Y;
-        FAMILY_THREADX = FAMILY_Y;
-      } else {
-        PRIVATE_THREADX = PRIVATE_Z;
-        FAMILY_THREADX = FAMILY_Z;
-      }
 
       userNameInfo = mask(userName, 3, 7);
       let token = new FileTokenStore(`.token/${userName}.json`);
@@ -148,7 +119,7 @@ const main = async () => {
           token: token,
         });
       } catch (e) {
-        console.error("操作失败:", e.message);// 只记录错误消息
+        console.error("操作失败:", e.message); // 只记录错误消息
       }
 
       cloudClientMap.set(userName, cloudClient);
@@ -160,7 +131,7 @@ const main = async () => {
           familyCapacityInfo: familyCapacityInfo0,
         } = await cloudClient.getUserSizeInfo();
 
-        const result = await doTask(cloudClient, PRIVATE_THREADX, FAMILY_THREADX);
+        const result = await doTask(cloudClient);
         result.forEach((r) => logger.log(r));
 
         let {
@@ -180,7 +151,9 @@ const main = async () => {
 
         logger.log(
           `${firstSpace}实际：个人容量+ ${
-            (cloudCapacityInfo2.totalSize - cloudCapacityInfo0.totalSize) / 1024 / 1024
+            (cloudCapacityInfo2.totalSize - cloudCapacityInfo0.totalSize) /
+            1024 /
+            1024
           }M, 家庭容量+ ${
             (familyCapacityInfo.totalSize - familyCapacitySize2) / 1024 / 1024
           }M`
@@ -223,9 +196,12 @@ const main = async () => {
         1024 /
         1024 /
         1024
-      ).toFixed(2)}G, 家庭总容量：${
-        (familyCapacityInfo2.totalSize / 1024 / 1024 / 1024).toFixed(2)
-      }G`
+      ).toFixed(2)}G, 家庭总容量：${(
+        familyCapacityInfo2.totalSize /
+        1024 /
+        1024 /
+        1024
+      ).toFixed(2)}G`
     );
     logger.log("");
   }
